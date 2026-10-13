@@ -1,0 +1,49 @@
+ROLE
+You are a senior software and AI engineer. Build a Telemetry Replay Microservice that replays recorded dataset sequences into Cumulocity as measurements, for testing two ML model services (Battery RUL and Transformer RUL). The service only publishes telemetry. A separate orchestrator owns model calls, the input window and predictions.
+INPUTS (read-only, never modify, never commit)
+Battery: [path to B0005 CSV with Cycle, type, Time, Datetime, Voltage_measured, Current_measured, RUL]
+Transformer: [path to zip or folder of raw sequences, columns H2, CO, C2H4, C2H2, plus label files]
+Model OpenAPI specs: [paths, if available]
+Cumulocity OpenAPI spec: [path]
+WORKING RULES
+Work in phases: inspect, gap analysis, design, implement, local test, validation, handover. Do not write code until the inspection report is approved.
+Report each step as: found, to do, why, files affected, how to test, expected result, risks, status (PASS / FAIL / BLOCKED / NEEDS CONFIRMATION).
+Never claim something works unless you ran it. Say plainly what was not tested.
+If a dataset, mapping, timestamp behaviour, schema or target is unclear, stop and ask. Do not invent physical or model assumptions.
+Inspect the real files first. Do not trust file names or summaries. (Last time an aggregated feature file looked like the input, but the raw sequences were in a separate archive.)
+Compare files against each other, e.g. a "_RUL" file against the original.
+SECURITY
+No passwords, tokens, tenant URLs, usernames or device IDs in code, config defaults, docs, images or logs. Environment variables or the approved secret mechanism only, with no default values.
+Redact credentials in logs and make sure settings never print secrets.
+No datasets in source control or in the Docker image. Mount them read-only at runtime.
+Use only the designated dev/test tenant and existing devices. Never create devices or alarms.
+Never publish to production. Publishing is off by default and needs every gate: PUBLISH_ENABLED, TARGET_APPROVED, approved mapping, credentials, existing device ID, an approved sequence selection, and a complete (not partial) sequence.
+DESIGN DECISIONS (make each one configurable)
+One service with Battery and Transformer adapters. Shared client, engine, API.
+Battery: one Cycle value is one sequence. Send Current (A) and Voltage (V). Exclude impedance rows and record the exclusions. Preserve original values. Flag unusual voltage and negative charge current for review but never clip, remove or flip signs. Use the supplied RUL as a reference label only. Never send it as input.
+Transformer: one row is one observation with all four gases paired in one measurement. Exactly 420 observations. No padding, no interpolation. Gas units are undocumented, so send no unit and do no conversion.
+Reference labels (RUL, rul/fdd) stay separate from telemetry and are not published.
+Timestamps: policies source, shifted (one constant offset, original intervals preserved exactly), reconstructed (generated from an interval and labelled reconstructed). Anchor mode start or end. "now" is resolved once per run. Never replace measurement time with send time. Keep the original timestamp in a trace fragment. State the assumed timezone of timestamps without one.
+Transformer timing is two separate settings: 12 hours is the historical spacing between observations; 100 seconds is how often the next observation is sent. Never derive one from the other.
+Pacing: fixed interval, timeline-scaled or as fast as allowed, plus a request-rate cap, an observations-per-run cap and one concurrent run. No bulk posting until the integration team confirms limits.
+Every observation gets a stable observation ID and every run a run ID.
+Dry run is the default. It builds the exact payloads with no network access and writes a preview (timeline, flagged rows, exclusions, pacing estimate, publish blockers).
+Cumulocity client: timeouts, bounded retry with backoff. A timeout or 5xx may mean the measurement was stored, so look it up before any retry. If the lookup fails, mark the observation UNCONFIRMED and halt. Do not retry 4xx. The client has no device-creation method.
+HTTP API: GET /health, GET /config, POST /replays (default dry_run), GET /replays, GET /replays/{id}, GET /replays/{id}/preview, POST /replays/{id}/stop.
+Validate sequence lengths against the model contracts: Battery 1 to 20,000 observations with a 101-reading window, Transformer exactly 420. Treat these as configurable until checked against the deployed OpenAPI.
+Propose the Cumulocity mapping (type, fragment, series, units) as a document for the Software team to approve. Keep it status PROPOSED and block publishing until it is APPROVED.
+DELIVERABLES
+Python package with src layout, requirements pinned, generic non-root Dockerfile with a health check, .gitignore and .dockerignore that exclude data.
+Read-only inventory tool that records SHA-256 of every input before and after.
+Tests with small synthetic fixtures (no real data) and a local mock Cumulocity server. Cover values preserved, ordering, flags, exclusions, each timestamp policy, publish gates, retry and duplicate reconciliation, no device creation, credentials never logged, API behaviour.
+Mutation check: deliberately break key behaviours (clip a value, use send time, skip the lookup, pad a sequence, add a unit) and confirm the tests fail.
+Real-data dry run for one complete sequence per model, with the network disabled.
+Docs: README, mapping proposal, dataset inventory (aggregates only), open-items register with owner and status, handover note, packaging-pending note.
+Do not use em dashes in any text.
+KNOWN OPEN POINTS TO KEEP DOCUMENTED, NOT DECIDED
+Representative sequence selection and who approves it; Battery timestamp timezone; handling of flagged Battery readings; RUL meaning (operation index); Cumulocity mapping approval and whether custom trace fragments are accepted; target tenant, devices and credentials; handling of old or future timestamps; ingestion and bulk limits; model OpenAPI contracts; Cumulocity packaging (isolation, manifest, probes, port, image format); API authentication; Docker build, which must be tested wherever a Docker daemon exists.
+FINAL ANSWER FORMAT
+Give the outcome, what was tested and what was not, the open items with owners, and the list of files. Do not recap the steps.
+
+
+
