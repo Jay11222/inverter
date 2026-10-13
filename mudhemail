@@ -1,0 +1,11 @@
+Hi Jayan,
+As discussed, I’m sharing the handover for the PMSM Inverter Fault Detection and Diagnosis (FDD) project to help you continue with the next steps.
+I’m also attaching a telemetry replay service as a supporting example. You can use it as a reference when working on the simulated data flow and testing the integration.
+The main areas to follow up on are:
+Model inference service: Review the existing implementation, API endpoints, and expected inputs and outputs.
+Deployment: Follow up on the GitLab/Jenkins pipeline and deployment readiness.
+Simulated data: Align the telemetry format with the model requirements and prepare the data flow for testing.
+IAIP integration: Coordinate with Riyaz and the Software team on connecting the simulated data, inference service, and platform.
+End-to-end validation: Verify the complete flow once the required access and integration components are ready.
+Please feel free to reach out if you need any clarification or additional information. I’ll be happy to support you during the handover.
+Best regards,
