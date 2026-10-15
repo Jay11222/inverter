@@ -1,0 +1,11 @@
+Hi Mudhawi,
+
+Attached is the data simulation for the PMSM inverter model: a standalone telemetry replay microservice built the same way as the Battery/Transformer one (that service is unchanged). It replays rows of the Zenodo dataset into Cumulocity as measurements. It only publishes telemetry; it never calls the model.
+
+Please start with HANDOFF_INTEGRATION.md. It covers what is published, how measurements map to /predict requests, sample payloads, and what the end-to-end test should check.
+
+Status: tested locally, with real-data dry runs and a mock Cumulocity. Publishing is off and nothing has been sent to any tenant. The Docker image has not been built yet because I had no Docker daemon.
+
+The remaining decisions (profile, mapping approval, tenant and device, row selection, limits, packaging) are listed with their owners in docs/OPEN_ITEMS.md. They are all settings, not code changes. Could you review the package and confirm it is what you need? If anything requires a change to the service itself, let me know and I’ll make it.
+
+Thanks,
